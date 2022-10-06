@@ -91,6 +91,9 @@ config_option(
     DEPENDS KernelArchArmV8a
 )
 
+list(APPEND configure_string "#undef CONFIG_MAX_NUM_NODES")
+config_set(KernelMaxNumNodes2 MAX_NUM_NODES ${ElfLoaderNumNodes})
+
 add_config_library(elfloader "${configure_string}")
 
 add_compile_options(-D_XOPEN_SOURCE=700 -ffreestanding -Wall -Werror -W -Wextra)
@@ -229,11 +232,15 @@ endif()
 list(SORT files)
 
 set(cpio_files "")
-list(APPEND cpio_files "$<TARGET_FILE:kernel.elf>")
-if(ElfloaderIncludeDtb)
-    list(APPEND cpio_files "${KernelDTBPath}")
-endif()
-list(APPEND cpio_files "$<TARGET_PROPERTY:rootserver_image,ROOTSERVER_IMAGE>")
+
+foreach(overlay RANGE 1 ${ElfLoaderNumNodes})
+    list(APPEND cpio_files "$<TARGET_FILE:seL4-${overlay}-kernel>")
+    if(ElfloaderIncludeDtb)
+        list(APPEND cpio_files "$<TARGET_FILE:seL4-${overlay}-dtb>")
+    endif()
+    list(APPEND cpio_files "$<TARGET_FILE:rootserver-${overlay}>")
+endforeach()
+
 if(NOT ${ElfloaderHashInstructions} STREQUAL "hash_none")
     set(hash_command "")
     if(ElfloaderHashSHA)
